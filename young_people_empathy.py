@@ -217,7 +217,7 @@ class YoungPeopleEmpathy:
     
     def tuneParameters(train_data_mix_fin_n,train_Y):
         parameter_candidates = [
-    {'C': [1.566,1.691,1.7,1.9,3,3.56,5], 'gamma': [0.00916,0.00888,0.009,0.00999,0.009785,0.01],'kernel': ['rbf']},
+    {'C': [1.566,1.691,1.7,3,3.56,5], 'gamma': [0.00916,0.00888,0.009,0.00999,0.009785,0.01],'kernel': ['rbf']},
         ]
 
         # Create a classifier object with the classifier and parameter candidates
@@ -278,9 +278,9 @@ class YoungPeopleEmpathy:
         column_name = []
         low_columns = []
         for index, row in meanplot.iterrows():
-            if row['Mean Ranking'] >= threshold:
+            if row['Mean Ranking'] > threshold:
                 column_name.append(row['Feature'])
-            if row['Mean Ranking'] <= 0.2:
+            if row['Mean Ranking'] < 0.2:
                 low_columns.append(row['Feature'])
         top_columns = column_name
         print("Top features found..")
