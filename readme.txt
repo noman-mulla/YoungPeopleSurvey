@@ -8,3 +8,6 @@ Step 1: Open command line.
 Step 2: Make sure you are in the same directory.
 Step 3: Type command
         >> python main_file.py
+        
+
+For Extra Credit please refer Young-people-data-analysis.ipynb notebook
