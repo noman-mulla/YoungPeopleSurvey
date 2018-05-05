@@ -17,6 +17,7 @@ import xgboost as xgb
 from xgboost.sklearn import XGBClassifier
 from sklearn.grid_search import GridSearchCV
 from sklearn import svm
+from sklearn.metrics import confusion_matrix
 
 
 class YoungPeopleEmpathy:
@@ -38,10 +39,10 @@ class YoungPeopleEmpathy:
 
         h = BaslineClassifier.BaselineClassifier({})
         h.train(train_X,train_Y)
-        print("Train Accuracy")
+        print("Train Accuracy for Baseline Accuracy..")
         predicted_labels_train = h.predictAll(train_X)
         print(accuracy_score(train_Y, predicted_labels_train))
-        print("Test Accuracy")
+        print("Test Accuracy for Baseline Accuracy..")
         predicted_labels = h.predictAll(test_X)
         print(accuracy_score(test_Y, predicted_labels))
         
@@ -216,7 +217,7 @@ class YoungPeopleEmpathy:
     
     def tuneParameters(train_data_mix_fin_n,train_Y):
         parameter_candidates = [
-    {'C': [1.566,1.691,1.7,1.9,3,3.56,5], 'gamma': [0.00916,0.00888,0.009,0.00999,0.009785,0.01,0.015,0.05],'kernel': ['rbf']},
+    {'C': [1.566,1.691,1.7,1.9,3,3.56,5], 'gamma': [0.00916,0.00888,0.009,0.00999,0.009785,0.01],'kernel': ['rbf']},
         ]
 
         # Create a classifier object with the classifier and parameter candidates
@@ -244,16 +245,22 @@ class YoungPeopleEmpathy:
         xgb.fit(train_data_mix_n,train_Y)
 
         predicted_label = xgb.predict(test_data_mix_n)
-        print("Test accuracy using XGBoost")
+        print("Test accuracy using XGBoost Classifier")
         print(accuracy_score(test_Y, predicted_label))
+        print("Confusion Metrix for XGBoost Classifier..")
+        cnf_matrix = confusion_matrix(test_Y, predicted_label)
+        print(cnf_matrix)
     
     
     def preprocessAndPredictEmpathy():
         train_data = YoungPeopleEmpathy.loadData()
+        print("Running Baseline Classifier..")
         YoungPeopleEmpathy.run_baseline_classifier(train_data)
         #Split data
         train_data_reduced = train_data.dropna(subset=set(['Empathy']))
+        print("Performing Train Test Split..")
         train_X, test_X, train_Y, test_Y,num_cols,cat_cols =        YoungPeopleEmpathy.splitDataTrainTest(train_data_reduced)
+        print("Imputing Numeric Missing Values..")
         train_X_numeric,test_X_numeric = YoungPeopleEmpathy.fillNumericMissingValues(train_X,test_X)
         train_X_cat_encoded,test_X_cat_encoded = YoungPeopleEmpathy.encodeCategoricalData(train_X,test_X,cat_cols)
         train_X_numeric,test_X_numeric = YoungPeopleEmpathy.calculateBMI(train_X_numeric,test_X_numeric)
@@ -262,6 +269,7 @@ class YoungPeopleEmpathy:
         train_data_mix = train_X_numeric.join(train_X_cat_encoded)
         test_data_mix = test_X_numeric.join(test_X_cat_encoded)
         # calculate Rank based features
+        print("Calculating rank of features..")
         colnames = train_data_mix.columns
         #0.3
         threshold=0.35
@@ -275,47 +283,25 @@ class YoungPeopleEmpathy:
             if row['Mean Ranking'] <= 0.2:
                 low_columns.append(row['Feature'])
         top_columns = column_name
+        print("Top features found..")
+        print(top_columns)
         #filter on basis of top-columns
         train_data_mix_n = train_data_mix[top_columns].join(train_data_mix[low_columns])
         test_data_mix_n = test_data_mix[top_columns].join(test_data_mix[low_columns])
-        
-        """#convert selected features to range data
-        num_cols,cat_cols = YoungPeopleEmpathy.getListofNumericColumnsAndCategorical(train_data_mix_n)
-        df_encoded_train,df_encoded_test = YoungPeopleEmpathy.getRangeData(train_data_mix_n,test_data_mix_n,num_cols)
-        
-        #join range data
-        train_data_mix_n_red = train_data_mix_n.drop(num_cols,axis=1)
-        test_data_mix_n_red = test_data_mix_n.drop(num_cols,axis=1)
-
-
-        train_data_mix_fin = train_data_mix_n_red.join(df_encoded_train)
-        test_data_mix_fin = test_data_mix_n_red.join(df_encoded_test)
-        
-        #get new top columns
-        colnames = train_data_mix_fin.columns
-        #0.34
-        threshold=0.34
-        meanplot = YoungPeopleEmpathy.calculateRankMatrix(train_data_mix_fin,train_Y,colnames,threshold)
-        column_name = []
-        for index, row in meanplot.iterrows():
-            if row['Mean Ranking'] >= threshold:
-                column_name.append(row['Feature'])
-        top_columns = column_name
-        
-        train_data_mix_fin_n = train_data_mix_fin[top_columns]
-        test_data_mix_fin_n = test_data_mix_fin[top_columns]"""
-        
-        
-        
-        
-        
+        print("Performing cross validation for hyperparameter tuning for SVM..")
+        print("Waiting for cross validation to complete..")
         #cross validation using grid search for hyper-parameter tuning
         best_C,best_kernel,best_gamma,best_degree = YoungPeopleEmpathy.tuneParameters(train_data_mix_n,train_Y)
         #using tuned parameters to fit the entire training set
+        print("Using best parameter to train the model on train data.. ")
         sv = svm.SVC(kernel=best_kernel,C=best_C,gamma=best_gamma)
         sv.fit(train_data_mix_n,train_Y)
         #predicting on test data
+        print("Using best parameter used to train the model to predict test data.. ")
         predicted_label = sv.predict(test_data_mix_n)
         print("Test Accuracy using SVM")
         print(accuracy_score(test_Y, predicted_label))
+        print("Confusion Metrix for SVM..")
+        cnf_matrix = confusion_matrix(test_Y, predicted_label)
+        print(cnf_matrix)
         YoungPeopleEmpathy.runXGBoost(train_data_mix_n,train_Y,test_data_mix_n,test_Y)
